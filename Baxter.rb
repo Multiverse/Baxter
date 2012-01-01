@@ -28,6 +28,19 @@ bot = Cinch::Bot.new do
       end
       return url
     end
+    def commit(sections, hash)
+      actualresults = []
+      sections.each do |section|
+        actualsection = $urlhelpers[section]
+        url = "https://github.com/Multiverse/Multiverse-#{actualsection}/commit/#{hash}"
+        begin
+          doc = Nokogiri::HTML(open(url))
+          actualresults<<url
+        rescue OpenURI::HTTPError
+        end
+      end
+      return actualresults
+    end
     def wiki(sections, search)
       actualresults = []
       sections.each do |section|
@@ -138,6 +151,24 @@ bot = Cinch::Bot.new do
     if m.channel.opped?(m.user) || m.channel.voiced?(m.user)
       wikiresults = wiki(["c", "p", "n", "s"], page)
       wikiresults.each do |result|
+        m.reply(result)
+      end
+    end
+  end
+  
+  on :message, /!commit-?([cpnsa])\s?:(.+)/i do |m, type, hash|
+    if m.channel.opped?(m.user) || m.channel.voiced?(m.user)
+      commitresults = commit([type], hash)
+      commitresults.each do |result|
+        m.reply(result)
+      end
+    end
+  end
+  
+  on :message, /!commit\s?:(.+)/i do |m, hash|
+  if m.channel.opped?(m.user) || m.channel.voiced?(m.user)
+      commitresults = commit(["c", "p", "n", "s"], hash)
+      commitresults.each do |result|
         m.reply(result)
       end
     end
