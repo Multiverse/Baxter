@@ -9,23 +9,21 @@ $config = ParseConfig.new('credentials.cfg')
 $urlhelpers = Hash["c" => "Core", "p" => "Portals", "n" => "NetherPortals", "s" => "SignPortals", "a" => "Adventure"]
 $authrequired = true
 
-require './handlers.rb'
+$plugins = []
+Dir['./handlers/*.rb'].each do |f|
+  require f
+  $plugins << Kernel.const_get(File.basename(f, ".rb"))
+end
 
 bot = Cinch::Bot.new do
   configure do |c|
-    c.server = "irc.esper.net"
+    c.server = "localhost"
     c.nick = "MV-Baxter"
     c.user = $config.get_value('username')
     c.password = $config.get_value('password')
     c.channels = ARGV
 
-    c.plugins.plugins = [CoreWiki, CI, Forum, Latest, Greetings, Help, Issue, Wiki]
-  end
-  
-  helpers do
-    # https://github.com/Multiverse/Multiverse-Core/issues/354
-
-    
+    c.plugins.plugins = $plugins
   end
 end
 
