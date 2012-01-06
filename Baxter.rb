@@ -13,7 +13,7 @@ require './handlers.rb'
 
 bot = Cinch::Bot.new do
   configure do |c|
-    c.server = "localhost"
+    c.server = "irc.esper.net"
     c.nick = "MV-Baxter"
     c.user = $config.get_value('username')
     c.password = $config.get_value('password')
