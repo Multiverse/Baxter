@@ -5,7 +5,7 @@ require 'open-uri'
 require 'nokogiri'
 require 'parseconfig'
 $config = ParseConfig.new('credentials.cfg')
-$urlhelpers = Hash["c" => "Core", "p" => "Portals", "n" => "NetherPortals", "s" => "SignPortals", "a" => "Adventure"]
+$urlhelpers = Hash["c" => "Core", "p" => "Portals", "n" => "NetherPortals", "s" => "SignPortals", "a" => "Adventure", "i" => "Inventories"]
 $authrequired = true
 bot = Cinch::Bot.new do
   configure do |c|
@@ -55,7 +55,7 @@ bot = Cinch::Bot.new do
     
     def latest(plugins)
       if plugins == nil
-        plugins = ["c", "p", "n", "s", "a"]
+        plugins = ["c", "p", "n", "s", "a", "i"]
       end
       results = ""
       plugins.each do |plugin|
@@ -136,7 +136,7 @@ bot = Cinch::Bot.new do
   
   on :message, /!wiki\s?:(.+)/i do |m, page|
     if m.channel.opped?(m.user) || m.channel.voiced?(m.user)
-      wikiresults = wiki(["c", "p", "n", "s"], page)
+      wikiresults = wiki(["c", "p", "n", "s", "a", "i"], page)
       wikiresults.each do |result|
         m.reply(result)
       end
