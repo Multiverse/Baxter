@@ -108,11 +108,18 @@ bot = Cinch::Bot.new do
   
   on :message, "help" do |m|
     m.user.send("Hi, My name is Baxter and I'm a super helpful bot.")
-    m.user.send("I'm here to help, but I'm currently being developed.")
-    m.user.send("Only OPs and VOICEs in #multiverse can use me for now!")
+    m.user.send("I'm here to help, but I'm currently being abused.")
+    m.user.send("Only OPs and VOICEs in #multiverse can abuse me for now :(")
+    m.user.send("(Please send help!)")
   end
   
   on :message, /!issue-?([cpnsa])\s?#(\d+)/i do |m, type, issue|
+    if m.user.authname == "mbaxter"
+      m.reply "Hi mbaxter!"
+      if m.channel.opped?(m.user)
+        m.reply(issue(type,issue))
+      end
+    end
     if m.user.authname == "fernferret"
       m.reply "Hello master Fern..."
       m.reply(issue(type, issue))
