@@ -4,8 +4,10 @@ require 'cgi'
 require 'open-uri'
 require 'nokogiri'
 require 'parseconfig'
+require 'octokit'
 $config = ParseConfig.new('credentials.cfg')
-$urlhelpers = Hash["c" => "Core", "p" => "Portals", "n" => "NetherPortals", "s" => "SignPortals", "a" => "Adventure"]
+$urlhelpers = Hash["c"    => "Core",  "p"       => "Portals", "n"             => "NetherPortals", "s"           => "SignPortals", "a"         => "Adventure",
+                   "core" => "Core",  "portals" => "Portals", "netherportals" => "NetherPortals", "signportals" => "SignPortals", "adventure" => "Adventure"]
 $authrequired = true
 bot = Cinch::Bot.new do
   configure do |c|
@@ -17,17 +19,59 @@ bot = Cinch::Bot.new do
   end
   
   helpers do
-    # https://github.com/Multiverse/Multiverse-Core/issues/354
-    def issue(section, issue)
-      actualsection = $urlhelpers[section]
-      url = "https://github.com/Multiverse/Multiverse-#{actualsection}/issues/#{CGI.escape(issue)}"
-      begin
-        doc = Nokogiri::HTML(open(url))
-      rescue OpenURI::HTTPError
-        return "Sorry, issue ##{issue} didn't exist on #{actualsection}!"
-      end
-      return url
+    def get_repo(abrev)
+      return $urlhelpers[abrev.downcase]
     end
+    
+    def issue(section, issue)
+      begin
+        return Octokit.issue("Multiverse/Multiverse-#{get_repo(section)}", CGI.escape(issue)).html_url
+      rescue Octokit::NotFound
+        return "Sorry, issue ##{issue} didn't exist on #{get_repo(section)}!"
+      end
+    end
+    
+    def open_issues(section, milestone)
+      open_issues = 0
+      closed_issues = 0
+      if milestone != nil and milestone.length > 0
+        milestones = Octokit.milestones("Multiverse/Multiverse-#{get_repo(section)}").map{|mile| [mile.title, mile.number]}
+        matches = []
+        matchnames = []
+        milestones.each do |ms|
+          if ms[0].downcase.include?(milestone.downcase)
+            matches<<ms[1]
+            matchnames<<ms[0]
+          end
+        end
+        
+        # Now go get all of those milestones
+        matches.each do |match|
+          open_issues += Octokit.issues("Multiverse/Multiverse-#{get_repo(section)}", {:milestone => match}).count
+          closed_issues += Octokit.issues("Multiverse/Multiverse-#{get_repo(section)}", {:milestone => match, :state => "closed"}).count
+        end
+        return "There are #{open_issues} open and #{closed_issues} in #{get_repo(section)} for Milestone(s) #{matchnames}."
+      else
+        open_issues += Octokit.issues("Multiverse/Multiverse-#{get_repo(section)}").count
+        closed_issues += Octokit.issues("Multiverse/Multiverse-#{get_repo(section)}", {:state => "closed"}).count
+        return "There are #{open_issues} open and #{closed_issues} in #{get_repo(section)}."
+      end
+      
+    end
+    
+    def commit(hash)
+      $urlhelpers.each_value do |section|
+        url = "https://github.com/Multiverse/Multiverse-#{section}/commit/#{CGI.escape(hash)}"
+        begin
+          doc = Nokogiri::HTML(open(url))
+          return url
+        rescue OpenURI::HTTPError
+          # Keep trying
+        end
+      end
+      return nil
+    end
+    
     def wiki(sections, search)
       actualresults = []
       sections.each do |section|
@@ -76,6 +120,12 @@ bot = Cinch::Bot.new do
   
   on :message, /^ci$/i do |m|
     if m.channel.opped?(m.user) || m.channel.voiced?(m.user)
+      m.reply "http://ci.onarandombox.com/view/Multiverse"
+    end
+  end
+  
+  on :message, /^jd$/i do |m|
+    if m.channel.opped?(m.user) || m.channel.voiced?(m.user)
       m.reply "http://ci.onarandombox.com/job/Multiverse-Core"
     end
   end
@@ -96,6 +146,26 @@ bot = Cinch::Bot.new do
     if m.user.authname == "fernferret"
       m.reply "Hello master Fern..."
       bot.logger.debug m.user
+    end
+  end
+  
+  on :message, /^issues\s*([^\s]*)?\s*([^\s]*)?$/i do |m, section, mile|
+    
+    if m.channel.opped?(m.user) || m.channel.voiced?(m.user)
+      m.reply(open_issues(section, mile))
+    end
+  end
+  
+  on :message, /\b([0-9a-f]{5,40})\b/ do |m, hash|
+    # Ensure we're not in a loop.
+    if m.user.authname == $config.get_value('username')
+      return
+    end
+    if m.channel.opped?(m.user) || m.channel.voiced?(m.user)
+      url = commit(hash)
+      if url
+        m.reply(url)
+      end
     end
   end
   
